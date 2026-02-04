@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import type { Doctor } from "../types/api.types";
 
 export type DoctorFormProps = {
-  onClose: () => null;
-  onSubmit: (data: any) => null;
+  onClose: () => void;
+  onSubmit: (data: Doctor) => Promise<void>;
 };
 
 export default function DoctorForm({ onClose, onSubmit }: DoctorFormProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Doctor>({
+    id: "",
+    created_at: "",
     name: "",
     crm: "",
     specialty: "",
