@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Doctors from "./pages/Doctor";
 import Hospitals from "./pages/Hospital";
+import Productions from "./pages/Productions";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -15,8 +16,8 @@ function App() {
         return <Doctors />;
       case "hospitals":
         return <Hospitals />;
-      // case "productions":
-      //   return <Productions />;
+      case "productions":
+        return <Productions />;
       // case "transfers":
       //   return <Transfers />;
       default:
