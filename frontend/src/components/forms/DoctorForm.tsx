@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { Doctor } from "../types/api.types";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import type { Doctor } from "../../types/api.types";
 
 export type DoctorFormProps = {
   onClose: () => void;
@@ -8,20 +9,31 @@ export type DoctorFormProps = {
 };
 
 export default function DoctorForm({ onClose, onSubmit }: DoctorFormProps) {
-  const [formData, setFormData] = useState<Doctor>({
-    id: "",
-    created_at: "",
-    name: "",
-    crm: "",
-    specialty: "",
-  });
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
+  // Inicializando o RHF
+  const { register, handleSubmit, reset } = useForm<Doctor>({
+    defaultValues: {
+      name: "",
+      crm: "",
+      specialty: "",
+    },
+  });
+
+  // Função para gerar ID aleatório
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  // Função de submit
+  const onSubmitForm: SubmitHandler<Doctor> = async (data) => {
     setLoading(true);
     try {
-      await onSubmit(formData);
+      const doctorWithId: Doctor = {
+        ...data,
+        id: generateId(),
+        created_at: new Date().toISOString(),
+      };
+      await onSubmit(doctorWithId);
+      reset(); // Limpa o formulário
       onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -43,18 +55,14 @@ export default function DoctorForm({ onClose, onSubmit }: DoctorFormProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Nome *
             </label>
             <input
               type="text"
-              required
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
+              {...register("name", { required: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Dr. João Silva"
             />
@@ -66,11 +74,7 @@ export default function DoctorForm({ onClose, onSubmit }: DoctorFormProps) {
             </label>
             <input
               type="text"
-              required
-              value={formData.crm}
-              onChange={(e) =>
-                setFormData({ ...formData, crm: e.target.value })
-              }
+              {...register("crm", { required: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="CRM-SP 123456"
             />
@@ -82,11 +86,7 @@ export default function DoctorForm({ onClose, onSubmit }: DoctorFormProps) {
             </label>
             <input
               type="text"
-              required
-              value={formData.specialty}
-              onChange={(e) =>
-                setFormData({ ...formData, specialty: e.target.value })
-              }
+              {...register("specialty", { required: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Cardiologia"
             />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { Hospital } from "../types/api.types";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import type { Hospital } from "../../types/api.types";
 
 export type HospitalFormProps = {
   onClose: () => void;
@@ -8,19 +9,29 @@ export type HospitalFormProps = {
 };
 
 export default function HospitalForm({ onClose, onSubmit }: HospitalFormProps) {
-  const [formData, setFormData] = useState({
-    id: "",
-    name: "",
-    code: "",
-    created_at: "",
-  });
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
+  // React Hook Form
+  const { register, handleSubmit, reset } = useForm<Hospital>({
+    defaultValues: {
+      name: "",
+      code: "",
+    },
+  });
+
+  // Função para gerar ID aleatório
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  const onSubmitForm: SubmitHandler<Hospital> = async (data) => {
     setLoading(true);
     try {
-      await onSubmit(formData);
+      const hospitalWithId: Hospital = {
+        ...data,
+        id: generateId(),
+        created_at: new Date().toISOString(),
+      };
+      await onSubmit(hospitalWithId);
+      reset(); // limpa formulário
       onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -42,18 +53,14 @@ export default function HospitalForm({ onClose, onSubmit }: HospitalFormProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Nome *
             </label>
             <input
               type="text"
-              required
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
+              {...register("name", { required: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Hospital São Lucas"
             />
@@ -65,11 +72,7 @@ export default function HospitalForm({ onClose, onSubmit }: HospitalFormProps) {
             </label>
             <input
               type="text"
-              required
-              value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value })
-              }
+              {...register("code", { required: true })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="HSL001"
             />

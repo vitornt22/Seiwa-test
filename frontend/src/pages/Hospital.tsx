@@ -5,7 +5,7 @@ import Loading from "../components/Loading";
 import { hospitalsAPI } from "../services/api";
 import { formatDateTime } from "../utils/formatters";
 import type { Hospital } from "../types/api.types";
-import HospitalForm from "../components/HospitalForm";
+import HospitalForm from "../components/forms/HospitalForm";
 
 export default function Hospitals() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);

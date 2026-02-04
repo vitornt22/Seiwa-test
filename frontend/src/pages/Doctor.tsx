@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, UserRound } from "lucide-react";
 import Loading from "../components/Loading";
-import DoctorForm from "../components/DoctorForm";
+import DoctorForm from "../components/forms/DoctorForm";
 import { doctorsAPI } from "../services/api";
 import { formatDateTime } from "../utils/formatters";
 import type { Doctor } from "../types/api.types";

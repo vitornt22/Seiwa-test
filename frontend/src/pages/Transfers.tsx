@@ -1,24 +1,24 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import Table from "../components/Table";
+import Filters from "../components/Filters";
 import Loading from "../components/Loading";
-import { productionsAPI, doctorsAPI, hospitalsAPI } from "../services/api";
+import { transfersAPI, doctorsAPI, hospitalsAPI } from "../services/api";
 import {
   formatCurrency,
   formatDate,
   formatDateTime,
 } from "../utils/formatters";
-import ProductionForm from "../components/forms/ProductionForm";
 import type {
   Doctor,
-  Hospital,
   ListFilters,
-  Production,
+  Hospital,
+  Transfer,
 } from "../types/api.types";
-import Filters from "../components/Filters";
+import TransferForm from "../components/forms/TranferForm";
 
-export default function Productions() {
-  const [productions, setProductions] = useState<Production[]>([]);
+export default function Transfers() {
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +35,7 @@ export default function Productions() {
   }, []);
 
   useEffect(() => {
-    loadProductions();
+    loadTransfers();
   }, [filters]);
 
   const loadData = async () => {
@@ -47,7 +47,7 @@ export default function Productions() {
       ]);
       setDoctors(doctorsData);
       setHospitals(hospitalsData);
-      await loadProductions();
+      await loadTransfers();
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -55,18 +55,18 @@ export default function Productions() {
     }
   };
 
-  const loadProductions = async () => {
+  const loadTransfers = async () => {
     try {
-      const data = await productionsAPI.getAll(filters);
-      setProductions(data);
+      const data = await transfersAPI.getAll(filters);
+      setTransfers(data);
     } catch (error) {
-      console.error("Error loading productions:", error);
+      console.error("Error loading transfers:", error);
     }
   };
 
-  const handleSubmit = async (data: Production) => {
-    await productionsAPI.create(data);
-    await loadProductions();
+  const handleSubmit = async (data: Transfer) => {
+    await transfersAPI.create(data);
+    await loadTransfers();
   };
 
   const getDoctorName = (doctorId: string) => {
@@ -100,14 +100,14 @@ export default function Productions() {
     {
       header: "Valor",
       render: (row: any) => (
-        <span className="font-semibold text-green-600">
+        <span className="font-semibold text-blue-600">
           {formatCurrency(row.amount)}
         </span>
       ),
     },
     {
-      header: "Data da Produção",
-      render: (row: any) => formatDate(row.production_date),
+      header: "Data do Repasse",
+      render: (row: any) => formatDate(row.transfer_date),
     },
     {
       header: "Registrado em",
@@ -119,9 +119,9 @@ export default function Productions() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Produções</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Repasses</h1>
           <p className="text-gray-600 mt-1">
-            Gerencie as produções registradas no sistema
+            Gerencie os repasses registrados no sistema
           </p>
         </div>
         <button
@@ -129,7 +129,7 @@ export default function Productions() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Nova Produção
+          Novo Repasse
         </button>
       </div>
 
@@ -145,13 +145,13 @@ export default function Productions() {
       ) : (
         <Table
           columns={columns}
-          data={productions}
-          emptyMessage="Nenhuma produção registrada"
+          data={transfers}
+          emptyMessage="Nenhum repasse registrado"
         />
       )}
 
       {showForm && (
-        <ProductionForm
+        <TransferForm
           onClose={() => setShowForm(false)}
           onSubmit={handleSubmit}
         />
