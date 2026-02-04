@@ -11,6 +11,7 @@ export default function AppRoutes() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/users" element={<Doctors />} />
         <Route path="/users" element={<Hospitals />} />
+        <Route path="/users" element={<Hospitals />} />
       </Route>
     </Routes>
   );
