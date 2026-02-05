@@ -1,3 +1,6 @@
+// services/api.ts
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import type {
   Doctor,
   Hospital,
@@ -9,12 +12,37 @@ import type {
   CreateTransfer,
   ListFilters,
   FinancialSummary,
-} from '../types/api.types'
+} from '../types/api.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8004/api';
+const IP = "SEU_IP_AQUI";
+const API_BASE_URL = `http://${IP}:8004/api`;
+
+// Função auxiliar para lidar com armazenamento em diferentes plataformas
+const storage = {
+  getItem: async (key: string) => {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    return await SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+    } else {
+      await SecureStore.setItemAsync(key, value);
+    }
+  },
+  deleteItem: async (key: string) => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
+  }
+};
 
 async function apiClient(endpoint: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("access_token");
+  const token = await storage.getItem("access_token");
 
   const headers = {
     'Content-Type': 'application/json',
@@ -22,30 +50,34 @@ async function apiClient(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (response.status === 401) {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    window.location.href = "/login";
-    throw new Error("Sessão expirada. Faça login novamente.");
+    if (response.status === 401) {
+      await storage.deleteItem("access_token");
+      await storage.deleteItem("refresh_token");
+      // O redirecionamento no Mobile deve ser feito via router.replace('/') na tela que chama
+      throw new Error("Sessão expirada.");
+    }
+
+    if (response.status === 204) return;
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Erro na requisição");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("Erro na requisição:", error);
+    throw error;
   }
-
-  // DELETE geralmente retorna 204 No Content, não tentamos converter para JSON
-  if (response.status === 204) return;
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || "Erro na requisição");
-  }
-
-  return response.json();
 }
 
-/*  AUTH API  */
+/* AUTH API  */
 export const authAPI = {
   async login(credentials: any) {
     const res = await fetch(`${API_BASE_URL}/auth/token/`, {
@@ -53,10 +85,12 @@ export const authAPI = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials),
     });
+    
     if (!res.ok) throw new Error("Usuário ou senha inválidos");
+    
     const data = await res.json();
-    localStorage.setItem("access_token", data.access);
-    localStorage.setItem("refresh_token", data.refresh);
+    await storage.setItem("access_token", data.access);
+    await storage.setItem("refresh_token", data.refresh);
     return data;
   },
   async getProfile() {
@@ -64,7 +98,7 @@ export const authAPI = {
   }
 };
 
-/*  DOCTORS API  */
+/* DOCTORS API  */
 export const doctorsAPI = {
   async getAll(): Promise<Doctor[]> {
     return apiClient('/doctors/');
@@ -75,14 +109,12 @@ export const doctorsAPI = {
       body: JSON.stringify(data),
     });
   },
-  // Novo: Update
   async update(id: string, data: Partial<Doctor>): Promise<Doctor> {
     return apiClient(`/doctors/${id}/`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   },
-  // Novo: Delete
   async delete(id: string): Promise<void> {
     return apiClient(`/doctors/${id}/`, {
       method: 'DELETE',
@@ -92,11 +124,11 @@ export const doctorsAPI = {
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
-    return apiClient(`/doctors/${doctorId}/financial-summary/?${params}`);
+    return apiClient(`/doctors/${doctorId}/financial-summary/?${params.toString()}`);
   },
 };
 
-/*  HOSPITALS API  */
+/* HOSPITALS API  */
 export const hospitalsAPI = {
   async getAll(): Promise<Hospital[]> {
     return apiClient('/hospitals/');
@@ -120,11 +152,11 @@ export const hospitalsAPI = {
   },
 };
 
-/*  PRODUCTIONS API  */
+/* PRODUCTIONS API  */
 export const productionsAPI = {
   async getAll(filters: ListFilters = {}): Promise<Production[]> {
-    const params = new URLSearchParams(filters as Record<string, string>);
-    return apiClient(`/productions/?${params}`);
+    const params = new URLSearchParams(filters as any);
+    return apiClient(`/productions/?${params.toString()}`);
   },
   async create(data: CreateProduction): Promise<Production> {
     return apiClient('/productions/', { method: 'POST', body: JSON.stringify(data) });
@@ -142,11 +174,11 @@ export const productionsAPI = {
   },
 };
 
-/*  TRANSFERS API  */
+/* TRANSFERS API  */
 export const transfersAPI = {
   async getAll(filters: ListFilters = {}): Promise<Transfer[]> {
-    const params = new URLSearchParams(filters as Record<string, string>);
-    return apiClient(`/transfers/?${params}`);
+    const params = new URLSearchParams(filters as any);
+    return apiClient(`/transfers/?${params.toString()}`);
   },
   async create(data: CreateTransfer): Promise<Transfer> {
     return apiClient('/transfers/', { method: 'POST', body: JSON.stringify(data) });
@@ -163,3 +195,5 @@ export const transfersAPI = {
     });
   },
 };
+
+export { storage };

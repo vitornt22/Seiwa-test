@@ -6,12 +6,14 @@ import type { Doctor, Hospital, Production } from "../../types/api.types";
 
 export type ProductionFormProps = {
   onClose: () => void;
-  onSubmit: (data: Production) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
+  initialData?: Production | null; // Adicionado suporte para edição
 };
 
 export default function ProductionForm({
   onClose,
   onSubmit,
+  initialData,
 }: ProductionFormProps) {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -28,32 +30,51 @@ export default function ProductionForm({
     },
   });
 
+  // Carrega médicos e hospitais para os selects
   useEffect(() => {
     const loadData = async () => {
-      const [doctorsData, hospitalsData] = await Promise.all([
-        doctorsAPI.getAll(),
-        hospitalsAPI.getAll(),
-      ]);
-      setDoctors(doctorsData);
-      setHospitals(hospitalsData);
+      try {
+        const [doctorsData, hospitalsData] = await Promise.all([
+          doctorsAPI.getAll(),
+          hospitalsAPI.getAll(),
+        ]);
+        setDoctors(doctorsData);
+        setHospitals(hospitalsData);
+      } catch (error) {
+        console.error("Erro ao carregar dependências:", error);
+      }
     };
     loadData();
   }, []);
 
-  const generateId = () => Math.random().toString(36).substr(2, 9);
+  // Sincroniza o formulário quando entra em modo de edição
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        doctor: initialData.doctor,
+        hospital: initialData.hospital,
+        amount: initialData.amount,
+        production_date: initialData.production_date,
+      });
+    } else {
+      reset({
+        doctor: "",
+        hospital: "",
+        amount: 0,
+        production_date: "",
+      });
+    }
+  }, [initialData, reset]);
 
   const onSubmitForm: SubmitHandler<
     Omit<Production, "id" | "created_at">
   > = async (data) => {
     setLoading(true);
     try {
-      const production: Production = {
-        ...data,
-        id: generateId(),
-        created_at: new Date().toISOString(),
-      };
-      await onSubmit(production);
-      reset(); // limpa o form
+      // Se for edição, garantimos que o ID seja mantido no objeto enviado
+      const payload = initialData ? { ...data, id: initialData.id } : data;
+      await onSubmit(payload);
+      reset();
       onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -63,13 +84,15 @@ export default function ProductionForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-fadeIn">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-scaleUp">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Nova Produção</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {initialData ? "Editar Produção" : "Nova Produção"}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
           >
             <X className="w-5 h-5" />
           </button>
@@ -80,20 +103,22 @@ export default function ProductionForm({
           <Controller
             name="doctor"
             control={control}
-            rules={{ required: true }}
-            render={({ field }) => (
+            rules={{ required: "Selecione um médico" }}
+            render={({ field, fieldState }) => (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Médico *
                 </label>
                 <select
                   {...field}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                    fieldState.error ? "border-red-500" : "border-gray-300"
+                  }`}
                 >
-                  <option value="">Selecione...</option>
-                  {doctors.map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
-                      {doctor.name}
+                  <option value="">Selecione um médico...</option>
+                  {doctors.map((doc) => (
+                    <option key={doc.id} value={doc.id}>
+                      {doc.name}
                     </option>
                   ))}
                 </select>
@@ -105,20 +130,22 @@ export default function ProductionForm({
           <Controller
             name="hospital"
             control={control}
-            rules={{ required: true }}
-            render={({ field }) => (
+            rules={{ required: "Selecione um hospital" }}
+            render={({ field, fieldState }) => (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
                   Hospital *
                 </label>
                 <select
                   {...field}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                    fieldState.error ? "border-red-500" : "border-gray-300"
+                  }`}
                 >
-                  <option value="">Selecione...</option>
-                  {hospitals.map((hospital) => (
-                    <option key={hospital.id} value={hospital.id}>
-                      {hospital.name}
+                  <option value="">Selecione um hospital...</option>
+                  {hospitals.map((hosp) => (
+                    <option key={hosp.id} value={hosp.id}>
+                      {hosp.name}
                     </option>
                   ))}
                 </select>
@@ -130,19 +157,26 @@ export default function ProductionForm({
           <Controller
             name="amount"
             control={control}
-            rules={{ required: true, min: 0 }}
-            render={({ field }) => (
+            rules={{ required: "Informe o valor", min: 0.01 }}
+            render={({ field, fieldState }) => (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor *
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Valor da Produção *
                 </label>
-                <input
-                  {...field}
-                  type="number"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0.00"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                    R$
+                  </span>
+                  <input
+                    {...field}
+                    type="number"
+                    step="0.01"
+                    className={`w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                      fieldState.error ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="0,00"
+                  />
+                </div>
               </div>
             )}
           />
@@ -151,35 +185,41 @@ export default function ProductionForm({
           <Controller
             name="production_date"
             control={control}
-            rules={{ required: true }}
-            render={({ field }) => (
+            rules={{ required: "Selecione a data" }}
+            render={({ field, fieldState }) => (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Data da Produção *
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Data *
                 </label>
                 <input
                   {...field}
                   type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                    fieldState.error ? "border-red-500" : "border-gray-300"
+                  }`}
                 />
               </div>
             )}
           />
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 disabled:opacity-50"
             >
-              {loading ? "Salvando..." : "Salvar"}
+              {loading
+                ? "Processando..."
+                : initialData
+                  ? "Atualizar"
+                  : "Salvar Produção"}
             </button>
           </div>
         </form>

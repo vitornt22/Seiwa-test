@@ -1,39 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import type { Doctor } from "../../types/api.types";
 
 export type DoctorFormProps = {
   onClose: () => void;
-  onSubmit: (data: Doctor) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
+  initialData?: Doctor | null; // Adicionado suporte a dados iniciais
 };
 
-export default function DoctorForm({ onClose, onSubmit }: DoctorFormProps) {
+export default function DoctorForm({
+  onClose,
+  onSubmit,
+  initialData,
+}: DoctorFormProps) {
   const [loading, setLoading] = useState(false);
 
-  // Inicializando o RHF
+  // Inicializando o RHF com valores iniciais se existirem
   const { register, handleSubmit, reset } = useForm<Doctor>({
-    defaultValues: {
+    defaultValues: initialData || {
       name: "",
       crm: "",
       specialty: "",
     },
   });
 
-  // Função para gerar ID aleatório
-  const generateId = () => Math.random().toString(36).substr(2, 9);
+  // Sempre que o initialData mudar (abrir para editar outro médico), resetamos o form
+  useEffect(() => {
+    if (initialData) {
+      reset(initialData);
+    } else {
+      reset({ name: "", crm: "", specialty: "" });
+    }
+  }, [initialData, reset]);
 
-  // Função de submit
   const onSubmitForm: SubmitHandler<Doctor> = async (data) => {
     setLoading(true);
     try {
-      const doctorWithId: Doctor = {
-        ...data,
-        id: generateId(),
-        created_at: new Date().toISOString(),
-      };
-      await onSubmit(doctorWithId);
-      reset(); // Limpa o formulário
+      // Enviamos os dados. Se for edição, o objeto já contém o ID original via RHF
+      await onSubmit(data);
+      reset();
       onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -43,69 +49,77 @@ export default function DoctorForm({ onClose, onSubmit }: DoctorFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] animate-fadeIn">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-scaleUp">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Novo Médico</h2>
+          <h2 className="text-xl font-bold text-gray-900">
+            {initialData ? "Editar Médico" : "Novo Médico"}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-full"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nome *
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Nome Completo *
             </label>
             <input
               type="text"
-              {...register("name", { required: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Dr. João Silva"
+              {...register("name", { required: "O nome é obrigatório" })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="Ex: Dr. Vitor Neto"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               CRM *
             </label>
             <input
               type="text"
-              {...register("crm", { required: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="CRM-SP 123456"
+              {...register("crm", { required: "O CRM é obrigatório" })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="000000-PI"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Especialidade *
             </label>
             <input
               type="text"
-              {...register("specialty", { required: true })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Cardiologia"
+              {...register("specialty", {
+                required: "A especialidade é obrigatória",
+              })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              placeholder="Ex: Sistemas de Informação"
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 disabled:opacity-50 disabled:shadow-none"
             >
-              {loading ? "Salvando..." : "Salvar"}
+              {loading
+                ? "Processando..."
+                : initialData
+                  ? "Atualizar"
+                  : "Cadastrar"}
             </button>
           </div>
         </form>

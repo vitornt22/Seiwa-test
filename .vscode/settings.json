@@ -3,6 +3,11 @@
     "**/node_modules": true,
 	"**/vitejs":true,
     "**/dist": true
-	}
+	},
+	"tailwindCSS.includeLanguages": {
+  		"plaintext": "javascript",
+  		"typescriptreact": "typescript"
+	}	,
+	"tailwindCSS.classAttributes": ["className", "tw", "style"]
 
 }
