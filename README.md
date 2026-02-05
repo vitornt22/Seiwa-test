@@ -3,9 +3,11 @@
 Sistema **Fullstack** projetado para o controle de **produção médica** e **repasses financeiros**.  
 O ecossistema é composto por:
 
+O ecossistema é composto por backend, frontend web e mobile, sendo que **toda a implementação do backend e do frontend foi desenvolvida por mim**, garantindo a **integração completa entre as camadas**, comunicação eficiente via API e consistência entre as regras de negócio e a interface do usuário.
+
 - **API em Django**
 - **Dashboard Web administrativo**
-- **Aplicativo Mobile** para lançamentos em tempo real
+- **Aplicativo Mobile**
 
 ---
 
