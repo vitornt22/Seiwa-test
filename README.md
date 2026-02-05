@@ -49,13 +49,7 @@ docker-compose up --build
 - **Usuário:** `admin`
 - **Senha:** `admin123`
 
-## 📱 Configuração do Mobile (Expo)
-
-Para que o aplicativo mobile consiga se comunicar com o backend rodando na sua máquina, é necessário configurar o **IP da rede local** e instalar corretamente as dependências do projeto.
-
----
-
-## 📱 Configuração do Mobile (Expo)
+## Configuração do Mobile (Expo)
 
 Para que o aplicativo mobile consiga se comunicar com o backend rodando na sua máquina, é necessário configurar o **IP da rede local**.
 
