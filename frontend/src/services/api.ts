@@ -11,53 +11,79 @@ import type {
   FinancialSummary,
 } from '../types/api.types'
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+// Porta 8004 conforme configurado no seu Docker
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8004/api';
 
-const delay = (ms: number): Promise<void> =>
-  new Promise(resolve => setTimeout(resolve, ms));
+/**
+ * Helper centralizado para chamadas API
+ * Gerencia automaticamente os headers de autenticação
+ */
+async function apiClient(endpoint: string, options: RequestInit = {}) {
+  const token = localStorage.getItem("access_token");
 
-const useMockData = true;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
 
-// Mocks
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
 
-let mockDoctors: Doctor[] = [];
-let mockHospitals: Hospital[] = [];
-let mockProductions: Production[] = [];
-let mockTransfers: Transfer[] = [];
+  // Se o backend retornar 401, o token expirou ou é inválido
+  if (response.status === 401) {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    window.location.href = "/login";
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
 
-// Doctors
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Erro na requisição");
+  }
+
+  return response.json();
+}
+
+/* ========= AUTH API ========= */
+
+export const authAPI = {
+  async login(credentials: any) {
+    // Note que aqui usamos a rota do seu app 'accounts' configurada anteriormente
+    const res = await fetch(`${API_BASE_URL}/auth/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!res.ok) throw new Error("Usuário ou senha inválidos");
+    
+    const data = await res.json();
+    localStorage.setItem("access_token", data.access);
+    localStorage.setItem("refresh_token", data.refresh);
+    return data;
+  },
+
+  async getProfile() {
+    return apiClient('/auth/profile/');
+  }
+};
+
+/* ========= DOCTORS API ========= */
 
 export const doctorsAPI = {
   async getAll(): Promise<Doctor[]> {
-    await delay(300);
-    if (useMockData) return mockDoctors;
-
-    const res = await fetch(`${API_BASE_URL}/doctors/`);
-    return res.json();
+    return apiClient('/doctors/');
   },
 
   async create(data: CreateDoctor): Promise<Doctor> {
-    await delay(300);
-
-    if (useMockData) {
-      const doctor: Doctor = {
-        id: String(Date.now()),
-        created_at: new Date().toISOString(),
-        ...data,
-      };
-
-      mockDoctors.push(doctor);
-      return doctor;
-    }
-
-    const res = await fetch(`${API_BASE_URL}/doctors/`, {
+    return apiClient('/doctors/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-
-    return res.json();
   },
 
   async getFinancialSummary(
@@ -65,161 +91,57 @@ export const doctorsAPI = {
     startDate?: string,
     endDate?: string
   ): Promise<FinancialSummary> {
-    await delay(300);
-
-    if (useMockData) {
-      const produced = mockProductions.filter(p =>
-        p.doctor === doctorId &&
-        (!startDate || p.production_date >= startDate) &&
-        (!endDate || p.production_date <= endDate)
-      );
-
-      const transferred = mockTransfers.filter(t =>
-        t.doctor === doctorId &&
-        (!startDate || t.transfer_date >= startDate) &&
-        (!endDate || t.transfer_date <= endDate)
-      );
-
-      const total_produced = produced.reduce((s, p) => s + p.amount, 0);
-      const total_transferred = transferred.reduce((s, t) => s + t.amount, 0);
-
-      return {
-        total_produced,
-        total_transferred,
-        balance: total_produced - total_transferred,
-      };
-    }
-
     const params = new URLSearchParams();
     if (startDate) params.append('start_date', startDate);
     if (endDate) params.append('end_date', endDate);
 
-    const res = await fetch(
-      `${API_BASE_URL}/doctors/${doctorId}/financial-summary/?${params}`
-    );
-
-    return res.json();
+    return apiClient(`/doctors/${doctorId}/financial-summary/?${params}`);
   },
 };
 
-// Hospitasls
+/* ========= HOSPITALS API ========= */
 
 export const hospitalsAPI = {
   async getAll(): Promise<Hospital[]> {
-    await delay(300);
-    if (useMockData) return mockHospitals;
-
-    const res = await fetch(`${API_BASE_URL}/hospitals/`);
-    return res.json();
+    return apiClient('/hospitals/');
   },
 
   async create(data: CreateHospital): Promise<Hospital> {
-    await delay(300);
-
-    if (useMockData) {
-      const hospital: Hospital = {
-        id: String(Date.now()),
-        created_at: new Date().toISOString(),
-        ...data,
-      };
-
-      mockHospitals.push(hospital);
-      return hospital;
-    }
-
-    const res = await fetch(`${API_BASE_URL}/hospitals/`, {
+    return apiClient('/hospitals/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-
-    return res.json();
   },
 };
 
-// Productions
+/* ========= PRODUCTIONS API ========= */
+
 export const productionsAPI = {
   async getAll(filters: ListFilters = {}): Promise<Production[]> {
-    await delay(300);
-
-    if (useMockData) {
-      return mockProductions.filter(p =>
-        (!filters.doctor || p.doctor === filters.doctor) &&
-        (!filters.hospital || p.hospital === filters.hospital) &&
-        (!filters.start_date || p.production_date >= filters.start_date) &&
-        (!filters.end_date || p.production_date <= filters.end_date)
-      );
-    }
-
     const params = new URLSearchParams(filters as Record<string, string>);
-    const res = await fetch(`${API_BASE_URL}/productions/?${params}`);
-    return res.json();
+    return apiClient(`/productions/?${params}`);
   },
 
   async create(data: CreateProduction): Promise<Production> {
-    await delay(300);
-
-    if (useMockData) {
-      const production: Production = {
-        id: String(Date.now()),
-        created_at: new Date().toISOString(),
-        ...data,
-      };
-
-      mockProductions.push(production);
-      return production;
-    }
-
-    const res = await fetch(`${API_BASE_URL}/productions/`, {
+    return apiClient('/productions/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-
-    return res.json();
   },
 };
 
-/* ========= TRANSFERS ========= */
+/* ========= TRANSFERS API ========= */
 
 export const transfersAPI = {
   async getAll(filters: ListFilters = {}): Promise<Transfer[]> {
-    await delay(300);
-
-    if (useMockData) {
-      return mockTransfers.filter(t =>
-        (!filters.doctor || t.doctor === filters.doctor) &&
-        (!filters.hospital || t.hospital === filters.hospital) &&
-        (!filters.start_date || t.transfer_date >= filters.start_date) &&
-        (!filters.end_date || t.transfer_date <= filters.end_date)
-      );
-    }
-
     const params = new URLSearchParams(filters as Record<string, string>);
-    const res = await fetch(`${API_BASE_URL}/transfers/?${params}`);
-    return res.json();
+    return apiClient(`/transfers/?${params}`);
   },
 
   async create(data: CreateTransfer): Promise<Transfer> {
-    await delay(300);
-
-    if (useMockData) {
-      const transfer: Transfer = {
-        id: String(Date.now()),
-        created_at: new Date().toISOString(),
-        ...data,
-      };
-
-      mockTransfers.push(transfer);
-      return transfer;
-    }
-
-    const res = await fetch(`${API_BASE_URL}/transfers/`, {
+    return apiClient('/transfers/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-
-    return res.json();
   },
 };

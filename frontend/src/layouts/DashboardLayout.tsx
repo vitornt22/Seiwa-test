@@ -1,13 +1,16 @@
-import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import { Outlet } from "react-router-dom";
 
 export default function DashboardLayout() {
   return (
-    <div className="flex">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <main className="ml-64flex-1 p-6 bg-zinc-100 min-h-screen">
-        <Outlet />
-      </main>
+      <div className="ml-64 p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* O Outlet é onde as páginas (Dashboard, Doctors) vão aparecer */}
+          <Outlet />
+        </div>
+      </div>
     </div>
   );
 }
