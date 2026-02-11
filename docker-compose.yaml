@@ -5,14 +5,14 @@ services:
     image: postgres:15
     container_name: seiwa_postgres
     restart: always
-    ports:
-      - "5432:5432" 
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      retries: 5
 
   backend:
     build:
@@ -20,23 +20,25 @@ services:
     container_name: seiwa_backend
     command: >
       sh -c "
+        echo 'Esperando banco...' &&
+        sleep 5 &&
         python manage.py migrate &&
         python manage.py runserver 0.0.0.0:8000
       "
     volumes:
       - ./backend:/app
     env_file:
-      - ./backend/.env
+      - .env
     ports:
       - "8004:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build:
       context: ./frontend
     container_name: seiwa_frontend
-    # O --host é obrigatório para o Docker conseguir expor a porta
     command: npm run dev -- --host 0.0.0.0
     volumes:
       - ./frontend:/app
@@ -45,12 +47,10 @@ services:
       - "5173:5173"
     environment:
       - VITE_API_URL=http://localhost:8004/api
-    stdin_open: true # Mantém o terminal aberto para o hot reload
     depends_on:
       - backend
+    stdin_open: true
     tty: true
-
-    
 
 volumes:
   postgres_data:

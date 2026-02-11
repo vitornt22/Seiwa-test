@@ -97,18 +97,18 @@ WSGI_APPLICATION = 'seiwa_backend.wsgi.application'
 # Mude o padrão para 'True'
 USE_DOCKER = os.getenv('USE_DOCKER', 'True') == 'True'
 
-
 if USE_DOCKER:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB", "seu_db"),
-            "USER": os.getenv("POSTGRES_USER", "seu_user"),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "sua_senha"),
-            "HOST": "db",  # Nome do serviço no Docker
+            "NAME": os.getenv("POSTGRES_DB"),
+            "USER": os.getenv("POSTGRES_USER"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
+            "HOST": "db",
             "PORT": "5432",
         }
     }
+
 else:
     DATABASES = {
         'default': {
